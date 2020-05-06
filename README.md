@@ -22,17 +22,15 @@ All the website does is generate a link for Option 2 (so you don't have to).
 If you want to automate things, you can just create the iCal link yourself.
 
 ```
-https://eb-to-ical.daylightpirates.org/eventbrite-organizer-ical?organizer={organizer_id}&token={anonymous_oauth_token}
+https://eb-to-ical.daylightpirates.org/eventbrite-organizer-ical?organizer={organizer_id}
 ```
 
 Replace `{organizer_id}` with the Eventbrite organizer's id
-(e.g. `https://www.eventbrite.com/o/privacy-lab-`**`7851144983`**) and replace
-`{anonymous_oauth_token}` with your own Eventbrite API developer anonymous OAuth
-token.
+(e.g. `https://www.eventbrite.com/o/privacy-lab-`**`7851144983`**).
 
-If you don't have an Eventbrite API developer account or anonymous OAuth token,
-you can use mine: `5E4M74CSL7VNW5OQUDAA` (NOTE: if you abuse this and it gets
-rate limited, I'll change it, and you'll ruin the party for everyone).
+NOTE: Since Jan 1, 2020, the Eventbrite API [prohibits](https://groups.google.com/d/msg/eventbrite-api/g88Ian3Kidw/XupDhExqAQAJ)
+getting another organizer's list of public events, so unfortunately we have to
+use the website's internal API to get past and future events for an organizer :(
 
 ### Option 3: Self-host
 
