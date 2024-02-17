@@ -5,7 +5,7 @@
 I wanted to follow several Eventbrite organizers' events on my personal
 calendar, but apparently Eventbrite doesn't have iCalendar support. So I made
 a proxy that converts the Eventbrite API to iCal (.ics) format. It is super
-bare-bones, using only nginx and Lua (directly in the nginx config).
+bare-bones, using only nginx and python (directly via the nginx config).
 
 ## How To Use
 
@@ -34,25 +34,28 @@ use the website's internal API to get past and future events for an organizer :(
 
 ### Option 3: Self-host
 
-If you want to run this converter yourself, just include the
-[`eb_to_ical.conf`](https://github.com/diafygi/eb-to-ical/blob/master/eb_to_ical.conf)
-in whatever nginx `server` config you want. All it does is add two locations
-(`/eventbrite-organizer-ical` and `/eventbrite-api`). The iCal conversion is
-done via Lua directly in the nginx config, so no outside dynamic servers are
-required!
+If you want to run this converter yourself, just include
+['cgi.nginx.conf'](https://github.com/diafygi/nginx2cgi/blob/main/cgi.nginx.conf)
+in whatever nginx `server` config you want, and configure it to run
+[`eb_to_ical.py`](https://github.com/diafygi/eb-to-ical/blob/main/eb_to_ical.py).
+All it does is call the python script using CGI, which then looks up the organization's
+events and converts it to the iCal format.
 
-Install requirements:
+Install requirements (needed for `cgi.nginx.conf` to work):
 ```sh
-apt-get install nginx-extras lua-cjson
+apt install libnginx-mod-http-perl
 ```
 
 Add to `server` config (see
-[`example_server.conf`](https://github.com/diafygi/eb-to-ical/blob/master/example_server.conf)
+[`example_server.conf`](https://github.com/diafygi/eb-to-ical/blob/main/example_server.conf)
 for a what I use):
 ```
 server {
     ...
-    include /path/to/eb_to_ical.conf;
+    location /eventbrite-organizer-ical {
+        set $cgi_script "cd /etc/nginx/sites-available/eb-to-ical/ && python3 -c 'import eb_to_ical, wsgiref.handlers; wsgiref.handlers.CGIHandler().run(eb_to_ical.app)'";
+        include "/etc/nginx/sites-available/nginx2cgi/cgi.nginx.conf";
+    }
     ...
 }
 ```
@@ -62,7 +65,7 @@ Make sure nginx likes the new include:
 sudo service nginx configtest
 ```
 
-Restart the server (you can use `reload` if you were already using `nginx-extras`):
+Restart the server (you can use `reload` if you already had `libnginx-mod-http-perl` installed):
 ```
 sudo service nginx restart
 ```
@@ -79,5 +82,5 @@ donation of $19.84.
 
 Written by Daniel Roesler ([https://daylightpirates.org/](https://daylightpirates.org/)).
 
-Copyright 2017. Released under the GNU AGPLv3.
+Copyright 2024. Released under the GNU AGPLv3.
 
