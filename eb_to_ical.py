@@ -2,6 +2,7 @@ import re
 import json
 import logging
 from datetime import timezone, datetime
+from urllib.error import HTTPError
 from urllib.parse import parse_qsl
 from urllib.request import urlopen, Request
 
@@ -54,9 +55,49 @@ def app(environ, start_response):
         page = 1
         while page:
             eb_url = f"https://www.eventbrite.com/org/{org_id}/showmore/?type={evt_type}&page={page}"
-            eb_resp = json.loads(urlopen(Request(url=eb_url)).read())
-            events.extend(eb_resp['data']['events'])
-            page = (page + 1) if eb_resp['data']['has_next_page'] else None
+
+            # report any non-2XX errors
+            try:
+                eb_resp = urlopen(Request(url=eb_url))
+            except HTTPError as resp_err:
+                err_resp = json.dumps({
+                    "error": "error_from_eventbrite",
+                    "eb_error": {
+                        "url": eb_url,
+                        "code": resp_err.code,
+                        "reason": resp_err.reason,
+                        "headers": {k: v for k, v in resp_err.headers.items()},
+                        "body": resp_err.read().decode(),
+                    }
+                }, indent=4).encode()
+                start_response("502 Bad Gateway", [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", str(len(err_resp))),
+                ])
+                return [err_resp]
+
+            # report any malformed response payloads
+            try:
+                eb_resp_json = json.loads(eb_resp.read())
+                events.extend(eb_resp_json['data']['events'])
+                eb_has_next = eb_resp_json['data']['has_next_page']
+            except (ValueError, KeyError) as ex:
+                err_resp = json.dumps({
+                    "error": "error_parsing_eb_response",
+                    "eb_response": {
+                        "url": eb_url,
+                        "status": eb_resp.status,
+                        "body": eb_resp.read().decode(),
+                    }
+                }, indent=4).encode()
+                start_response("502 Bad Gateway", [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", str(len(err_resp))),
+                ])
+                return [err_resp]
+
+            # iterate to next page
+            page = (page + 1) if eb_has_next else None
 
     # VCALENDAR header
     wrap_write("BEGIN:VCALENDAR")
