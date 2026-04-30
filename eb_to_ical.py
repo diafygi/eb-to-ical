@@ -133,7 +133,9 @@ def app(environ, start_response):
         wrap_write(b"SUMMARY:" + escape(event['name']['text']))
 
         # DESCRIPTION
-        wrap_write(b"DESCRIPTION:" + escape(event['url'] + "\n\n" + event['description']['text']))
+        event_url = event.get("url") or ""
+        event_desc = (event.get('description') or {}).get("text") or ""
+        wrap_write(b"DESCRIPTION:" + escape(f"{event_url}\n\n{event_desc}"))
 
         # CREATED (ngx.utctime, "yyyy-mm-dd hh:mm:ss")
         created = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
